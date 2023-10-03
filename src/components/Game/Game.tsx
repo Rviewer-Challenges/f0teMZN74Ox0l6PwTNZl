@@ -1,15 +1,17 @@
+// External imports
+import { FC, useMemo, useState, useEffect, useRef } from "react";
+import { Container, Box, Button, Typography } from "@mui/material";
+import Head from "next/head";
+
+// Internal imports
 import { gameDifficulties } from "@/services/constants";
 import {
   createInitialStateMatrix,
   createTruthStateMatrix,
 } from "@/services/helpers";
 import useBelow from "@/services/hooks/useBelow";
-import { Container, Box, Button, Typography } from "@mui/material";
-import { FC, useMemo, useState, useEffect, useRef } from "react";
-import { start } from "repl";
 import GameCard from "./GameCard";
 import GameBoard from "./GameBoard";
-import Head from "next/head";
 
 type GameProps = {
   difficulty?: "easy" | "medium" | "hard";
@@ -20,7 +22,6 @@ const DELAY_RESET_SELECTION = 1000;
 const TIME_TO_PLAY = 60;
 
 const Game: FC<GameProps> = ({ difficulty = "easy", id = 0 }) => {
-  // See the screen size
   const isMobile = useBelow("sm");
   // Import the rows, columns and options from the gameDifficulties object
   const { rows, columns, options, rowsMobile, columnsMobile } =
@@ -28,7 +29,7 @@ const Game: FC<GameProps> = ({ difficulty = "easy", id = 0 }) => {
   const actualRows = isMobile ? rowsMobile : rows;
   const actualColumns = isMobile ? columnsMobile : columns;
 
-  // Create the discovered state
+  // States
   const [uncoveredMatrix, setUncoveredMatrix] = useState(() =>
     createInitialStateMatrix(actualRows, actualColumns)
   );
@@ -46,7 +47,10 @@ const Game: FC<GameProps> = ({ difficulty = "easy", id = 0 }) => {
     [actualRows, actualColumns, options, id]
   );
 
-  useEffect(() => {
+  /**
+   * This effect will compare the two selected cards and if they are equal
+   */
+  const handleCompareTwoSelectedCardsEffect = () => {
     if (el1 && el2) {
       if (truthState[el1[0]][el1[1]] === truthState[el2[0]][el2[1]]) {
         setRemainingPairs((prev) => prev - 1);
@@ -63,20 +67,23 @@ const Game: FC<GameProps> = ({ difficulty = "easy", id = 0 }) => {
         setEl2(null);
       }, DELAY_RESET_SELECTION);
     }
-  }, [el1, el2, setEl1, setEl2, truthState, setUncoveredMatrix]);
+  }
 
-  useEffect(() => {
+  /**
+   * This effect will start the countdown
+   */
+  const handleCountDownEffect = () => {
     if (startGame) {
       timerRef.current = setInterval(() => {
         setCountDown((prev) => prev - 1);
       }, 1000);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [startGame]);
+  }
 
-  useEffect(() => {
+  /**
+   * This effect will check if the game is over
+   */
+  const handleEndGameEffect = () => {
     if (countDown === 0) {
       if (timerRef.current) clearInterval(timerRef.current);
       setResult("lost");
@@ -85,9 +92,12 @@ const Game: FC<GameProps> = ({ difficulty = "easy", id = 0 }) => {
       if (timerRef.current) clearInterval(timerRef.current);
       setResult("won");
     }
-  }, [countDown, uncoveredMatrix]);
+  }
 
-  useEffect(() => {
+  /**
+   * This effect will reset the game
+   */
+  const handleResetGameEffect = () => {
     if (id > 0) {
       setUncoveredMatrix(() =>
         createInitialStateMatrix(actualRows, actualColumns)
@@ -100,6 +110,25 @@ const Game: FC<GameProps> = ({ difficulty = "easy", id = 0 }) => {
       setMoves(0);
       setRemainingPairs(options);
     }
+  }
+
+  useEffect(() => {
+    handleCompareTwoSelectedCardsEffect();
+  }, [el1, el2, truthState]);
+
+  useEffect(() => {
+    handleCountDownEffect();
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [startGame]);
+
+  useEffect(() => {
+    handleEndGameEffect()
+  }, [countDown, uncoveredMatrix]);
+
+  useEffect(() => {
+    handleResetGameEffect();
   }, [id, actualColumns, actualRows, options]);
 
   const handleClick = (rowIndex: number, cellIndex: number) => {
